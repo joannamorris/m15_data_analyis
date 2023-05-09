@@ -1,0 +1,246 @@
+---
+title: "m15_202111_baseline -150 to 50, 200-300 ms difference wave"
+output: pdf_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Load packages and define functions
+This section load the packages `knitr`, `markdown`, `ez`, `stringr` `readr`, `tidyr`, and `dplyr`.
+It also define a function to compute the standard error of the mean and to calculate the mean, standard deviation and standard error for each condition.
+## Load Packages
+
+```{r load_packages, echo=FALSE, message=FALSE}
+require(knitr)
+require(markdown)
+require(ez)
+require(stringr)
+require(readr)
+require(tidyr)
+require(dplyr)
+```
+
+## Function to calculate the standard error of the mean 
+
+```{r sem}
+sem = function(x)
+{
+  sqrt(var(x)/length(x))
+
+}
+```
+
+
+## Function to calculate the mean, the standard deviation and the standard error for each condition
+
+`data` : a data frame
+`varname` : the name of a column containing the variable to be summariezed
+`groupnames` : vector of column names to be used as grouping variables
+
+```{r data_summary}
+
+data_summary <- function(data, varname, groupnames){
+  require(plyr)
+  summary_func <- function(x, col){
+    c(mean = mean(x[[col]], na.rm=TRUE),
+      sd = sd(x[[col]], na.rm=TRUE),
+      sem = sd(x[[col]])/sqrt(length(x)))
+  }
+  data_sum<-ddply(data, groupnames, .fun=summary_func,
+                  varname)
+  data_sum <- rename(data_sum, c("mean" = varname))
+ return(data_sum)
+}
+```
+
+
+# Analyse Affix Frequency
+
+## Read in and format the data
+Then filter into two datasets, one with 2 Relatedness Factors (related, unrelated) and 2 Productivity Factors (high, low) and another with just one factors—Priming Effects for High adn Low productivity calculated by subtracting Related scores from Unrelated.
+
+```{r read_data, message=FALSE}
+m15_200_300_afx <- read_csv("M15_afxfrq_200_300_bsl_150_50.csv")
+m15_diff_afx <-  filter(m15_200_300_afx, binlabel == "Priming_High" | binlabel == "Priming_Low")
+m15_2by2_afx <-  filter(m15_200_300_afx, binlabel != "Priming_High" & binlabel != "Priming_Low")
+```
+
+Add factors *relatedness* and *productivity* for the 2-factor dataframe by separating 'binlabel' variable. Recodes the difference wave dataframe by removing the "Priming" part of the binlabel.
+
+```{r add_rel_prod}
+m15_2by2_afx <-separate(m15_2by2_afx, binlabel, into = c("relatedness", "productivity"), sep = "_")
+
+m15_diff_afx$productivity <- ifelse(m15_diff_afx$binlabel == "Priming_Low", "Low", "High")
+m15_diff_afx$binlabel <- NULL # removes binlabel column; no longer needed
+```
+
+Separate electrode labels into multiple factors based on *anteriority* and *laterality*. `tidyr::separate` makes separating columns simple by allowing you to pass an integer index of split position, including negatively indexed from the end of the string.
+
+```{r add_ant_lat}
+m15_diff_afx <- m15_diff_afx %>% 
+  separate(chlabel, into = c('anteriority', 'laterality'), sep = -1, convert = TRUE)
+
+m15_diff_afx <- m15_diff_afx %>%                               
+  mutate(laterality = replace(laterality, laterality == "Z", 0))  # Replacing "Z" value with 0
+
+#Extract 5 x 3 matrix for analysis (F3 to P4)
+
+m15_diff_afx_subset <-  filter(m15_diff_afx, laterality == 0 & anteriority!= "O" | 
+                                 laterality == 3 | laterality == 4)
+```
+
+## Run ANOVA
+
+```{r anova, comment=NA, warning=FALSE}
+# ezDesign(m15_diff_afx_subset, productivity, value, row = laterality, col = anteriority)
+
+m15_diff_afx_aov <- ezANOVA(data = m15_diff_afx_subset, dv = value, wid = ERPset,
+                        within = .(anteriority, laterality, productivity))
+m15_diff_afx_aov
+```
+
+
+##  Plot Means
+###  Summarise the data
+```{r summarise, comment=NA, warning=FALSE, message=FALSE}
+df2_afx <- data_summary(m15_diff_afx_subset, varname="value", 
+                    groupnames=c("productivity", "laterality", "anteriority"))
+# df2_afx$sem <- NULL
+
+head(df2_afx)
+```
+
+
+
+### Barplot with SD error bars
+The function geom_errorbar() can be used to produce the error bars
+```{r barplot}
+library(ggplot2)
+# Default bar plot
+p<- ggplot(df2_afx, aes(x=anteriority, y=value, fill=productivity)) + 
+  geom_bar(stat="identity", color="black", 
+           position=position_dodge()) +
+  facet_grid(.~laterality) +
+  geom_errorbar(aes(ymin=value-sem, ymax=value+sem), width=.2,
+                 position=position_dodge(.9)) 
+
+p+labs(title="Priming as a function of Productivity and Scalp Topography", x="Productivity", y = "microvolts")+
+   theme_classic() + scale_fill_grey()
+```
+
+
+# Analyse Stem to Wholeword Frequency Ratio (Median Split)
+
+## Read in and format the data
+Then filter into two datasets, one with 2 Relatedness Factors (related, unrelated) and 2 Productivity Factors (high, low) and another with just one factors—Priming Effects for High adn Low productivity calculated by subtracting Related scores from Unrelated.
+
+```{r read_data_med, message=FALSE}
+m15_200_300_med <- read_csv("m15_medsplt_200_300_bsl_150_50.csv")
+m15_diff_med <-  filter(m15_200_300_med, binlabel == "Priming_High" | binlabel == "Priming_Low")
+m15_2by2_med <-  filter(m15_200_300_med, binlabel != "Priming_High" & binlabel != "Priming_Low")
+
+```
+
+Add factors *relatedness* (and *productivity* for 2 x 2 df)  by recoding 'binlabel' variable 
+
+```{r add_rel_prod_med}
+m15_2by2_med <-separate(m15_2by2_med, binlabel, into = c("relatedness", "productivity"), sep = "_")
+
+m15_diff_med$productivity <- ifelse(m15_diff_med$binlabel == "Priming_Low", "Low", "High")
+m15_diff_med$binlabel <- NULL # removes binlabel column; no longer needed
+```
+
+Separate electrode labels into multiple factors based on *anteriority* and *laterality*. `tidyr::separate` makes separating columns simple by allowing you to pass an integer index of split position, including negatively indexed from the end of the string.
+
+```{r add_ant_lat_med}
+m15_diff_med <- m15_diff_med %>% 
+  separate(chlabel, into = c('anteriority', 'laterality'), sep = -1, convert = TRUE)
+
+m15_diff_med <- m15_diff_med %>%                               
+  mutate(laterality = replace(laterality, laterality == "Z", 0))  # Replacing "Z" value with 0
+
+#Extract 5 x 3 matrix for analysis (F3 to P4)
+
+m15_diff_med_subset <-  filter(m15_diff_med, laterality == 0 & anteriority!= "O" | 
+                                 laterality == 3 | laterality == 4)
+```
+
+
+##Run ANOVA
+
+```{r anova_med, comment=NA, warning=FALSE}
+# ezDesign(m15_diff_med_subset, productivity, value, row = laterality, col = anteriority)
+
+m15_diff_med_aov <- ezANOVA(data = m15_diff_med_subset, dv = value, wid = ERPset,
+                        within = .(anteriority, laterality, productivity))
+m15_diff_med_aov
+```
+
+
+
+##Plot Means
+### Summarise the data
+```{r summarise_med, comment=NA}
+df2_med <- data_summary(m15_diff_med_subset, varname="value", 
+                    groupnames=c("productivity", "laterality", "anteriority"))
+# df2_med$sem <- NULL
+
+head(df2_med)
+```
+
+
+
+### Barplot with SD error bars
+The function geom_errorbar() can be used to produce the error bars
+```{r barplot_med}
+library(ggplot2)
+# Default bar plot
+p<- ggplot(df2_med, aes(x=anteriority, y=value, fill=productivity)) + 
+  geom_bar(stat="identity", color="black", 
+           position=position_dodge()) +
+  facet_grid(.~laterality) +
+  geom_errorbar(aes(ymin=value-sem, ymax=value+sem), width=.2,
+                 position=position_dodge(.9)) 
+p+labs(title="Priming as a function of Parsability and Scalp Topography", x="Productivity", y = "microvolts")+
+   theme_classic() + scale_fill_grey()
+```
+
+# Planned Comparisons
+This section explores the significant "Laterality x Parsability" interaction obtained for the "m15_diff_med_subset" df above, by doing a one-factor ANOVA test (high vs low parsability) for each of the three levels of laterality.
+
+## Effect of Parsability in the LH
+```{r anova_med_pc1, comment=NA, warning=FALSE}
+# ezDesign(m15_diff_med_subset, productivity, value, row = laterality, col = anteriority)
+
+m15_diff_med_aov_pc1 <- ezANOVA(data = filter(m15_diff_med_subset,m15_diff_med_subset$laterality==3), 
+                            dv = value, 
+                            wid = ERPset,
+                            within_full = .(anteriority, laterality, productivity),
+                            within = .(productivity))
+m15_diff_med_aov_pc1
+```
+
+## Effect of Parsability at the Midline
+```{r anova_med_pc2, comment=NA, warning=FALSE}
+m15_diff_med_aov_pc2 <- ezANOVA(data = filter(m15_diff_med_subset,m15_diff_med_subset$laterality==0), 
+                            dv = value, 
+                            wid = ERPset,
+                            within_full = .(anteriority, laterality, productivity),
+                            within = .(productivity))
+m15_diff_med_aov_pc2
+```
+
+## Effect of Parsability in the RH
+```{r anova_med_pc3, comment=NA, warning=FALSE}
+m15_diff_med_aov_pc3 <- ezANOVA(data = filter(m15_diff_med_subset,m15_diff_med_subset$laterality==4), 
+                            dv = value, 
+                            wid = ERPset,
+                            within_full = .(anteriority, laterality, productivity),
+                            within = .(productivity))
+m15_diff_med_aov_pc3
+
+```
