@@ -1,5 +1,5 @@
 ---
-title: "m15_202111_baseline -150 to 50, 200-300 ms difference wave"
+title: "m15_202111_baseline -150 to 50, 300-500 ms difference wave"
 output: pdf_document
 editor_options: 
   chunk_output_type: console
@@ -64,9 +64,9 @@ data_summary <- function(data, varname, groupnames){
 Then filter into two datasets, one with 2 Relatedness Factors (related, unrelated) and 2 Productivity Factors (high, low) and another with just one factors—Priming Effects for High adn Low productivity calculated by subtracting Related scores from Unrelated.
 
 ```{r read_data, message=FALSE}
-m15_200_300_afx <- read_csv("M15_afxfrq_200_300_bsl_150_50.csv")
-m15_diff_afx <-  filter(m15_200_300_afx, binlabel == "Priming_High" | binlabel == "Priming_Low")
-m15_2by2_afx <-  filter(m15_200_300_afx, binlabel != "Priming_High" & binlabel != "Priming_Low")
+m15_300_500_afx <- read_csv("M15_afxfrq_300_500_bsl_150_50.csv")
+m15_diff_afx <-  filter(m15_300_500_afx, binlabel == "Priming_High" | binlabel == "Priming_Low")
+m15_2by2_afx <-  filter(m15_300_500_afx, binlabel != "Priming_High" & binlabel != "Priming_Low")
 ```
 
 Add factors *relatedness* and *productivity* for the 2-factor dataframe by separating 'binlabel' variable. Recodes the difference wave dataframe by removing the "Priming" part of the binlabel.
@@ -139,9 +139,9 @@ p+labs(title="Priming as a function of Productivity and Scalp Topography", x="Pr
 Then filter into two datasets, one with 2 Relatedness Factors (related, unrelated) and 2 Productivity Factors (high, low) and another with just one factors—Priming Effects for High adn Low productivity calculated by subtracting Related scores from Unrelated.
 
 ```{r read_data_med, message=FALSE}
-m15_200_300_med <- read_csv("m15_medsplt_200_300_bsl_150_50.csv")
-m15_diff_med <-  filter(m15_200_300_med, binlabel == "Priming_High" | binlabel == "Priming_Low")
-m15_2by2_med <-  filter(m15_200_300_med, binlabel != "Priming_High" & binlabel != "Priming_Low")
+m15_300_500_med <- read_csv("m15_medsplt_300_500_bsl_150_50.csv")
+m15_diff_med <-  filter(m15_300_500_med, binlabel == "Priming_High" | binlabel == "Priming_Low")
+m15_2by2_med <-  filter(m15_300_500_med, binlabel != "Priming_High" & binlabel != "Priming_Low")
 
 ```
 
